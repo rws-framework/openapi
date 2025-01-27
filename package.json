@@ -1,0 +1,22 @@
+{
+  "name": "@rws-framework/openapi",
+  "private": false,
+  "version": "0.0.1",
+  "description": "",
+  "main": "src/index.ts",
+  "scripts": {},
+  "author": "papablack",
+  "license": "ISC",
+  "dependencies": {   
+    "@rws-framework/server": "^3.7.0"  
+  },
+  "devDependencies": {
+  
+  },
+  "resolutions": { 
+  }, 
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rws-framework/openapi.git"
+  }
+}
