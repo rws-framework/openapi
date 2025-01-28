@@ -187,7 +187,7 @@ export class RWSOpenApiService
         const routeResponse: OpenApiRouteParamResponseType = route.plugins.openapi.responses[responseCode];
 
         const specsResponse: OpenApiSpecResponse = {
-          description: routeResponse.description || 'Operation response',
+          description: routeResponse.description || 'Response ' + responseCode,
           content: {
             'application/json': {
               schema: this.convertParamTypesToSchema(routeResponse.returnParams)
