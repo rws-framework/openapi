@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { RWSConfigService } from '@rws-framework/server';
 import { RWSOpenApiService } from '../services/RWSOpenApiService';
 import { DiscoveryService } from '@nestjs/core';
 
 @Module({    
     providers: [
         DiscoveryService,
-        ConfigService,
+        RWSConfigService,
         RWSOpenApiService
     ],
     exports: [

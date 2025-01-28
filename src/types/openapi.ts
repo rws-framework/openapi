@@ -1,19 +1,35 @@
 export interface OpenAPIPath {
     [key: string]: {
-        [method: string]: {
-        tags: string[];
-        summary?: string;
-        parameters?: any[];
-        responses: {
-            [statusCode: string]: {
-            description: string;
-            content?: {
-                [contentType: string]: {
-                schema: any;
-                };
-            };
-            };
-        };
+        [method: string]: OpenAPIMethodSpec;
+    };
+}
+
+export interface OpenAPIMethodSpec {
+    tags: string[];
+    summary?: string;
+    parameters?: any[];
+    requestBody: {
+        required: boolean,
+        content: {
+            [key: string]: OpenApiSpecRequest
+        }
+    }
+    responses: {
+        [statusCode: string]: OpenApiSpecResponse;
+    };
+}
+
+export interface OpenApiSpecRequest {
+    schema: {
+        type: string,
+        properties: { [key: string]: any }
+    }
+}
+export interface OpenApiSpecResponse {
+    description: string;
+    content?: {
+        [contentType: string]: {
+        schema: any;
         };
     };
 }
@@ -25,6 +41,11 @@ export interface OpenAPISpec {
         version: string;
         description?: string;
     };
+    servers: [
+        {
+          url: string
+        }
+    ],
     paths: OpenAPIPath;
 }
 
@@ -36,3 +57,32 @@ export interface OpenApiParameter {
       type?: string
     }
   }
+
+export type OpenApiRouteParamTypes = {
+    [key: string]: {                
+        type: string,
+        name?: string,
+        description?: string,                
+    }
+}
+
+export type OpenApiRouteParamResponseType = {
+    returnParams: OpenApiRouteParamTypes,
+    description?: string
+}
+
+export interface IOpenApiRouteParams {
+    openapi: {
+        payload?: OpenApiRouteParamTypes,
+        responses?: {
+            [responseCode: number]: OpenApiRouteParamResponseType
+        }
+    }
+} 
+
+export interface IOpenApiGenerateParams {
+    title: string;
+    version: string;
+    description?: string;
+    server?: string
+}
