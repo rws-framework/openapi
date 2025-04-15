@@ -62,7 +62,8 @@ export type OpenApiRouteParamTypes = {
     [key: string]: {                
         type: string,
         name?: string,
-        description?: string,                
+        description?: string,     
+        properties?: OpenApiRouteParamTypes           
     }
 }
 
