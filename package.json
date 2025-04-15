@@ -1,14 +1,14 @@
 {
   "name": "@rws-framework/openapi",
   "private": false,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "",
   "main": "src/index.ts",
   "scripts": {},
   "author": "papablack",
   "license": "ISC",
   "dependencies": {   
-    "@rws-framework/server": "^3.7.2"  
+    "@rws-framework/server": "^3.*"  
   },
   "devDependencies": {
   
