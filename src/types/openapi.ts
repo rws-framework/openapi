@@ -22,7 +22,8 @@ export interface OpenAPIMethodSpec {
 export interface OpenApiSpecRequest {
     schema: {
         type: string,
-        properties: { [key: string]: any }
+        properties: { [key: string]: any },
+        required?: string[]
     }
 }
 export interface OpenApiSpecResponse {
@@ -63,6 +64,7 @@ export type OpenApiRouteParamTypes = {
         type: string,
         name?: string,
         description?: string,     
+        required?: boolean,
         properties?: OpenApiRouteParamTypes           
     }
 }

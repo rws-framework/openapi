@@ -37,17 +37,33 @@ export class RWSOpenApiService
     private convertParamTypesToSchema(params: OpenApiRouteParamTypes): OpenApiSpecRequest['schema'] {
       const properties: { [key: string]: any } = {};
       
+      const required: string[] = []
+
       for (const [key, value] of Object.entries(params)) {
         properties[key] = {
           type: value.type,
           description: value.description
         };
+
+        if(value.type === 'object'){      
+          properties[key] = this.convertParamTypesToSchema(value.properties);
+        }
+
+        if(value.required){
+          required.push(key);
+        }
       }
 
-      return {
+      const schemaObject: OpenApiSpecRequest['schema'] = {
         type: 'object',
-        properties
+        properties        
       };
+
+      if(required.length){
+        schemaObject.required = required;
+      }
+
+      return schemaObject;
     }
  
     generateOpenAPI(passedParams: Partial<IOpenApiGenerateParams> = {
