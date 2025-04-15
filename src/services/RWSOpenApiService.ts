@@ -83,6 +83,10 @@ export class RWSOpenApiService
           for (const route of subRoutes) {
             const fullPath = `${prefix}${route.path}`;
             const method = route.method.toLowerCase();
+
+            if (!route.plugins?.openapi) {
+              continue;
+            }        
   
             if (!openApiSpec.paths[fullPath]) {
               openApiSpec.paths[fullPath] = {};
