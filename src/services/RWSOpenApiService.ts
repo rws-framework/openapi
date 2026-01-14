@@ -36,30 +36,70 @@ export class RWSOpenApiService
 
     private convertParamTypesToSchema(params: OpenApiRouteParamTypes): OpenApiSpecRequest['schema'] {
       const properties: { [key: string]: any } = {};
-      
-      const required: string[] = []
+      const required: string[] = [];
 
       for (const [key, value] of Object.entries(params)) {
-        properties[key] = {
-          type: value.type,
-          description: value.description
-        };
+        if (typeof value === 'object' && value !== null) {
+          // Handle direct schema definitions (objects with type, oneOf, etc.)
+          if ('type' in value || 'oneOf' in value || 'enum' in value) {
+            const propertySchema: any = {
+              ...(value.type && { type: value.type }),
+              ...(value.description && { description: value.description })
+            };
 
-        if(value.type === 'object'){      
-          properties[key] = this.convertParamTypesToSchema(value.properties);
-        }
+            // Handle nested objects
+            if (value.type === 'object' && value.properties) {
+              const nestedSchema = this.convertParamTypesToSchema(value.properties);
+              propertySchema.properties = nestedSchema.properties;
+              if (nestedSchema.required) {
+                propertySchema.required = nestedSchema.required;
+              }
+            }
 
-        if(value.required){
-          required.push(key);
+            // Handle arrays
+            if (value.type === 'array' && value.items) {
+              propertySchema.items = value.items;
+            }
+
+            // Handle oneOf structures
+            if (value.oneOf) {
+              propertySchema.oneOf = value.oneOf;
+              if (propertySchema.type) {
+                delete propertySchema.type; // Remove type when using oneOf
+              }
+            }
+
+            // Handle enum values
+            if (value.enum) {
+              propertySchema.enum = value.enum;
+            }
+
+            // Handle format
+            if (value.format) {
+              propertySchema.format = value.format;
+            }
+
+            properties[key] = propertySchema;
+
+            if (value.required) {
+              required.push(key);
+            }
+          } else {
+            // Handle direct property definitions (any other object structure)
+            properties[key] = value;
+          }
+        } else {
+          // Handle primitive values
+          properties[key] = value;
         }
       }
 
-      const schemaObject: OpenApiSpecRequest['schema'] = {
+      const schemaObject: any = {
         type: 'object',
         properties        
       };
 
-      if(required.length){
+      if (required.length > 0) {
         schemaObject.required = required;
       }
 
@@ -97,37 +137,42 @@ export class RWSOpenApiService
           const { prefix, controllerName, routes: subRoutes } = prefixedRoute;
           
           for (const route of subRoutes) {
-            const fullPath = `${prefix}${route.path}`;
-            const method = route.method.toLowerCase();
+            // Handle route.path as array
+            const paths = Array.isArray(route.path) ? route.path : [route.path];
+            
+            for (const path of paths) {
+              const fullPath = `${prefix}${path}`;
+              const method = route.method.toLowerCase();
 
-            if (!route.plugins?.openapi) {
-              continue;
-            }        
-  
-            if (!openApiSpec.paths[fullPath]) {
-              openApiSpec.paths[fullPath] = {};
-            }
-  
-            const methodSpec: OpenAPIMethodSpec = this.initSpec(controllerName, route);
-
-            if (route.plugins?.openapi?.payload) {
-              this.populateRequest(route, methodSpec)
-            }
-
-            if (route.plugins?.openapi?.responses) {
-              this.populateResponse(route, methodSpec);
-            }
-  
-            // Add parameters if route has them and they're not explicitly disabled
-            if (!route.noParams) {
-              const parameters: OpenApiParameter[] = this.getParameters(route);
-                          
-              if (parameters.length > 0) {
-                methodSpec.parameters = parameters;
+              if (!route.plugins?.openapi) {
+                continue;
+              }        
+    
+              if (!openApiSpec.paths[fullPath]) {
+                openApiSpec.paths[fullPath] = {};
               }
-            }
+    
+              const methodSpec: OpenAPIMethodSpec = this.initSpec(controllerName, route);
 
-            openApiSpec.paths[fullPath][method] = methodSpec;
+              if (route.plugins?.openapi?.payload) {
+                this.populateRequest(route, methodSpec)
+              }
+
+              if (route.plugins?.openapi?.responses) {
+                this.populateResponse(route, methodSpec);
+              }
+    
+              // Add parameters if route has them and they're not explicitly disabled
+              if (!route.noParams) {
+                const parameters: OpenApiParameter[] = this.getParameters(route, path);
+                            
+                if (parameters.length > 0) {
+                  methodSpec.parameters = parameters;
+                }
+              }
+
+              openApiSpec.paths[fullPath][method] = methodSpec;
+            }
           }
         }
       }
@@ -137,9 +182,10 @@ export class RWSOpenApiService
 
     private initSpec(controllerName: string, route: IHTTProute<IOpenApiRouteParams>): OpenAPIMethodSpec
     {
-      return {
+      const spec: OpenAPIMethodSpec = {
         tags: [controllerName],
         summary: route.name,
+        description: route.plugins?.openapi?.description || `${route.method} ${route.name}`,
         responses: {
           '200': {
             description: 'Successful operation',
@@ -151,8 +197,13 @@ export class RWSOpenApiService
               }
             }
           }
-        },
-        requestBody: {
+        }
+      };
+
+      // Only add requestBody for methods that typically have one
+      const methodsWithBody = ['post', 'put', 'patch'];
+      if (methodsWithBody.includes(route.method.toLowerCase())) {
+        spec.requestBody = {
           required: true,
           content: {
             'application/json': {
@@ -162,18 +213,24 @@ export class RWSOpenApiService
               }
             }
           }
-        }
+        };
       }
+
+      return spec;
     }
 
-    private getParameters(route: IHTTProute<IOpenApiRouteParams>): OpenApiParameter[]
+    private getParameters(route: IHTTProute<IOpenApiRouteParams>, specificPath?: string): OpenApiParameter[]
     {
       const parameters: OpenApiParameter[] = [];
+      
+      // Use the specific path if provided, otherwise use the first path from route.path
+      const pathToCheck = specificPath || (Array.isArray(route.path) ? route.path[0] : route.path);
               
-      const pathParams = route.path.match(/\{(\w+)\}/g);
+      // Check for both {param} and :param syntax
+      const pathParams = pathToCheck.match(/[:{](\w+)[}]?/g);
       if (pathParams) {
         for (const param of pathParams) {
-          const paramName = param.replace(/[{}]/g, '');
+          const paramName = param.replace(/[:{}]/g, '');
           parameters.push({
             name: paramName,
             in: 'path',
@@ -189,33 +246,60 @@ export class RWSOpenApiService
   
     }
 
-    private populateRequest(route: IHTTProute<IOpenApiRouteParams>, methodSpec: OpenAPIPath[string][string]): void
+    private populateRequest(route: IHTTProute<IOpenApiRouteParams>, methodSpec: OpenAPIMethodSpec): void
     {
-      methodSpec.requestBody = {
-        required: true,
-        content: {
-          'application/json': {
-            schema: this.convertParamTypesToSchema(route.plugins.openapi.payload)
-          }
+      if (route.plugins?.openapi?.payload) {
+        // Ensure methodSpec has requestBody
+        if (!methodSpec.requestBody) {
+          methodSpec.requestBody = {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {}
+                }
+              }
+            }
+          };
         }
-      };
+        
+        // If the payload has a "body" property, use that directly as the schema
+        if (typeof route.plugins.openapi.payload === 'object' && 'body' in route.plugins.openapi.payload && route.plugins.openapi.payload.body) {
+          methodSpec.requestBody.content['application/json'].schema = route.plugins.openapi.payload.body;
+        } else {
+          methodSpec.requestBody.content['application/json'].schema = this.convertParamTypesToSchema(route.plugins.openapi.payload as OpenApiRouteParamTypes);
+        }
+      }
     }
 
-    private populateResponse(route: IHTTProute<IOpenApiRouteParams>, methodSpec: OpenAPIPath[string][string]): void
+    private populateResponse(route: IHTTProute<IOpenApiRouteParams>, methodSpec: OpenAPIMethodSpec): void
     {
+      if (!route.plugins?.openapi?.responses) {
+        return;
+      }
+      
       for (const responseCode in route.plugins.openapi.responses) {
-        const routeResponse: OpenApiRouteParamResponseType = route.plugins.openapi.responses[responseCode];
+        const routeResponse: any = route.plugins.openapi.responses[responseCode];
 
         const specsResponse: OpenApiSpecResponse = {
-          description: routeResponse.description || 'Response ' + responseCode,
-          content: {
+          description: routeResponse.description || 'Response ' + responseCode
+        };
+
+        // Check if response already has content defined (custom content types, schemas, examples)
+        if (routeResponse.content) {
+          specsResponse.content = routeResponse.content;
+        }
+        // Otherwise, generate content from returnParams if they exist
+        else if (routeResponse.returnParams && Object.keys(routeResponse.returnParams).length > 0) {
+          specsResponse.content = {
             'application/json': {
               schema: this.convertParamTypesToSchema(routeResponse.returnParams)
             }
-          }
-        };
+          };
+        }
 
         methodSpec.responses[responseCode] = specsResponse;
-      }    
+      }
     }
 }

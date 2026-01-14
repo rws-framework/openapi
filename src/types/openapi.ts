@@ -8,7 +8,8 @@ export interface OpenAPIMethodSpec {
     tags: string[];
     summary?: string;
     parameters?: any[];
-    requestBody: {
+    description?: string;
+    requestBody?: {
         required: boolean,
         content: {
             [key: string]: OpenApiSpecRequest
@@ -21,10 +22,14 @@ export interface OpenAPIMethodSpec {
 
 export interface OpenApiSpecRequest {
     schema: {
-        type: string,
-        properties: { [key: string]: any },
-        required?: string[]
-    }
+        type?: string,
+        properties?: { [key: string]: any },
+        required?: string[],
+        items?: any,
+        oneOf?: any[],
+        enum?: any[],
+        format?: string
+    } | any
 }
 export interface OpenApiSpecResponse {
     description: string;
@@ -60,25 +65,40 @@ export interface OpenApiParameter {
   }
 
 export type OpenApiRouteParamTypes = {
-    [key: string]: {                
-        type: string,
+    [key: string]: {
+        type?: string,
         name?: string,
-        description?: string,     
+        description?: string,
         required?: boolean,
-        properties?: OpenApiRouteParamTypes           
-    }
+        properties?: OpenApiRouteParamTypes,
+        items?: any,
+        oneOf?: any[],
+        enum?: any[],
+        format?: string
+    } | any
 }
 
 export type OpenApiRouteParamResponseType = {
-    returnParams: OpenApiRouteParamTypes,
-    description?: string
+    returnParams?: OpenApiRouteParamTypes,
+    description?: string,
+    content?: {
+        [contentType: string]: {
+            description?: string,
+            schema?: any,
+            examples?: any
+        }
+    }
 }
 
 export interface IOpenApiRouteParams {
     openapi: {
-        payload?: OpenApiRouteParamTypes,
+        payload?: OpenApiRouteParamTypes | {
+            body?: any;
+            [key: string]: any;
+        },
+        description?: string,
         responses?: {
-            [responseCode: number]: OpenApiRouteParamResponseType
+            [responseCode: string]: OpenApiRouteParamResponseType
         }
     }
 } 
