@@ -13,7 +13,10 @@
     "strictNullChecks": false,
     "allowSyntheticDefaultImports": true,
     "sourceMap": true,
-    "declaration": true, 
+    "declaration": true,
+    "noImplicitAny": false,
+    "types": [],
+    "typeRoots": []
   },
   "include": [
     "src"
