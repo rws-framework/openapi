@@ -294,7 +294,7 @@ export class RWSOpenApiService
         else if (routeResponse.returnParams && Object.keys(routeResponse.returnParams).length > 0) {
           specsResponse.content = {
             'application/json': {
-              schema: this.convertParamTypesToSchema(routeResponse.returnParams)
+              schema: routeResponse.returnParams
             }
           };
         }
