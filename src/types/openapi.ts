@@ -59,10 +59,27 @@ export interface OpenApiParameter {
     name: string,
     in: string,
     required: boolean,
+    description?: string,
     schema?: {
-      type?: string
+      type?: string,
+      enum?: any[],
+      format?: string
     }
   }
+
+export type OpenApiQueryParamDef = {
+    type?: string,
+    description?: string,
+    required?: boolean,
+    enum?: any[],
+    format?: string
+}
+
+export type OpenApiRouteParamDef = {
+    type?: string,
+    description?: string,
+    required?: boolean
+}
 
 export type OpenApiRouteParamTypes = {
     [key: string]: {
@@ -97,6 +114,8 @@ export interface IOpenApiRouteParams {
             [key: string]: any;
         },
         description?: string,
+        queryParams?: { [key: string]: OpenApiQueryParamDef },
+        routeParams?: { [key: string]: OpenApiRouteParamDef },
         responses?: {
             [responseCode: string]: OpenApiRouteParamResponseType
         }

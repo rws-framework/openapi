@@ -222,6 +222,7 @@ export class RWSOpenApiService
     private getParameters(route: IHTTProute<IOpenApiRouteParams>, specificPath?: string): OpenApiParameter[]
     {
       const parameters: OpenApiParameter[] = [];
+      const routeParamOverrides = route.plugins?.openapi?.routeParams || {};
       
       // Use the specific path if provided, otherwise use the first path from route.path
       const pathToCheck = specificPath || (Array.isArray(route.path) ? route.path[0] : route.path);
@@ -231,14 +232,40 @@ export class RWSOpenApiService
       if (pathParams) {
         for (const param of pathParams) {
           const paramName = param.replace(/[:{}]/g, '');
-          parameters.push({
+          const override = routeParamOverrides[paramName];
+          const paramSpec: OpenApiParameter = {
             name: paramName,
             in: 'path',
-            required: true,
+            required: override?.required !== false,
             schema: {
-              type: 'string'
+              type: override?.type || 'string'
             }
-          });
+          };
+          if (override?.description) {
+            paramSpec.description = override.description;
+          }
+          parameters.push(paramSpec);
+        }
+      }
+
+      // Add query parameters
+      const queryParams = route.plugins?.openapi?.queryParams;
+      if (queryParams) {
+        for (const [name, def] of Object.entries(queryParams)) {
+          const paramSpec: OpenApiParameter = {
+            name,
+            in: 'query',
+            required: def.required === true,
+            schema: {
+              ...(def.type && { type: def.type }),
+              ...(def.enum && { enum: def.enum }),
+              ...(def.format && { format: def.format })
+            }
+          };
+          if (def.description) {
+            paramSpec.description = def.description;
+          }
+          parameters.push(paramSpec);
         }
       }
 
