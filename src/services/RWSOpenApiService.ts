@@ -119,6 +119,8 @@ export class RWSOpenApiService
         params.server = this.defaultServer;
       }
       
+      const componentSchemas: { [schemaName: string]: any } = {};
+
       const openApiSpec: OpenAPISpec = {
         openapi: "3.0.0",
         info: {
@@ -159,7 +161,7 @@ export class RWSOpenApiService
               }
 
               if (route.plugins?.openapi?.responses) {
-                this.populateResponse(route, methodSpec);
+                this.populateResponse(route, methodSpec, componentSchemas);
               }
     
               // Add parameters if route has them and they're not explicitly disabled
@@ -177,6 +179,10 @@ export class RWSOpenApiService
         }
       }
   
+      if (Object.keys(componentSchemas).length > 0) {
+        openApiSpec.components = { schemas: componentSchemas };
+      }
+
       return openApiSpec;
     }
 
@@ -300,8 +306,19 @@ export class RWSOpenApiService
       }
     }
 
-    private populateResponse(route: IHTTProute<IOpenApiRouteParams>, methodSpec: OpenAPIMethodSpec): void
-    {
+    private buildSchemaName(routeName: string, responseCode: string): string {
+      const base = routeName
+        .split(/[.\-_]/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join('');
+      return `${base}_${responseCode}`;
+    }
+
+    private populateResponse(
+      route: IHTTProute<IOpenApiRouteParams>,
+      methodSpec: OpenAPIMethodSpec,
+      schemas: { [schemaName: string]: any }
+    ): void {
       if (!route.plugins?.openapi?.responses) {
         return;
       }
@@ -313,15 +330,25 @@ export class RWSOpenApiService
           description: routeResponse.description || 'Response ' + responseCode
         };
 
-        // Check if response already has content defined (custom content types, schemas, examples)
         if (routeResponse.content) {
-          specsResponse.content = routeResponse.content;
-        }
-        // Otherwise, generate content from returnParams if they exist
-        else if (routeResponse.returnParams && Object.keys(routeResponse.returnParams).length > 0) {
+          const processedContent: any = {};
+          for (const [contentType, contentDef] of Object.entries(routeResponse.content as any)) {
+            const cd = contentDef as any;
+            if (cd.schema) {
+              const schemaName = routeResponse.responseLabel || this.buildSchemaName(route.name, responseCode);
+              schemas[schemaName] = cd.schema;
+              processedContent[contentType] = { ...cd, schema: { $ref: `#/components/schemas/${schemaName}` } };
+            } else {
+              processedContent[contentType] = contentDef;
+            }
+          }
+          specsResponse.content = processedContent;
+        } else if (routeResponse.returnParams && Object.keys(routeResponse.returnParams).length > 0) {
+          const schemaName = routeResponse.responseLabel || this.buildSchemaName(route.name, responseCode);
+          schemas[schemaName] = routeResponse.returnParams;
           specsResponse.content = {
             'application/json': {
-              schema: routeResponse.returnParams
+              schema: { $ref: `#/components/schemas/${schemaName}` }
             }
           };
         }

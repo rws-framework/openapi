@@ -53,6 +53,9 @@ export interface OpenAPISpec {
         }
     ],
     paths: OpenAPIPath;
+    components?: {
+        schemas?: { [schemaName: string]: any };
+    };
 }
 
 export interface OpenApiParameter {
@@ -98,6 +101,7 @@ export type OpenApiRouteParamTypes = {
 export type OpenApiRouteParamResponseType = {
     returnParams?: OpenApiRouteParamTypes,
     description?: string,
+    responseLabel?: string,
     content?: {
         [contentType: string]: {
             description?: string,
